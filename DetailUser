@@ -1,0 +1,73 @@
+package com.example.github_user
+
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.util.Log
+import android.view.View
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
+import com.loopj.android.http.AsyncHttpClient
+import com.loopj.android.http.AsyncHttpResponseHandler
+import cz.msebera.android.httpclient.Header
+import kotlinx.android.synthetic.main.activity_detail_user.*
+import org.json.JSONObject
+
+class DetailUser : AppCompatActivity() {
+    companion object{
+        const val KEY_DATA = "key"
+    }
+    private lateinit var muser: Data
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_detail_user)
+
+        val sectionPagerAdapter = SectionPagerAdapter(this, supportFragmentManager)
+        sectionPagerAdapter.username = muser.nama
+        view_pager.adapter = sectionPagerAdapter
+        tabs.setupWithViewPager(view_pager)
+        supportActionBar?.elevation = 0f
+
+        val dataDetail = intent.getParcelableExtra(KEY_DATA) as Data
+        detailData(dataDetail.nama)
+    }
+    private fun detailData(nama : String?){
+        val client = AsyncHttpClient()
+        val url = "https://api.github.com/users/$nama"
+        client.addHeader("Authorization","token 7c9c872526439f91c0e8ab022601d26fbc8c2d9d")
+        client.addHeader("User-Agent","request")
+        client.get(url, object : AsyncHttpResponseHandler(){
+            override fun onSuccess(statusCode: Int, headers: Array<Header>, responseBody: ByteArray) {
+                ProgresBar.visibility = View.INVISIBLE
+                try {
+                    val result = String(responseBody)
+                    val responseObject = JSONObject(result)
+
+                    val name = responseObject.getString("name")
+                    val photo = responseObject.getString("avatar_url")
+                    val company = responseObject.getString("company")
+                    val location = responseObject.getString("location")
+
+                    val user = Data()
+                    user.nama = name
+                    user.photo = photo
+                    user.company = company
+                    user.location = location
+
+                    Glide.with(this@DetailUser)
+                            .load(user.photo)
+                            .apply(RequestOptions().override(100,100))
+                            .into(img_photo)
+                    txt_name.text = user.nama
+                    txt_company.text = user.company
+                    txt_location.text = user.location
+                }catch (e: Exception){
+                    e.printStackTrace()
+                }
+            }
+            override fun onFailure(statusCode: Int, headers: Array<Header>, responseBody: ByteArray, error: Throwable) {
+                ProgresBar.visibility = View.VISIBLE
+                Log.d("onFailure", error.message.toString())
+            }
+        })
+    }
+}
