@@ -1,0 +1,84 @@
+package com.example.github_user
+
+import android.os.Bundle
+import android.util.Log
+import androidx.fragment.app.Fragment
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.loopj.android.http.AsyncHttpClient
+import com.loopj.android.http.AsyncHttpResponseHandler
+import cz.msebera.android.httpclient.Header
+import kotlinx.android.synthetic.main.fragment_followers.*
+import org.json.JSONArray
+
+class FollowersFragment : Fragment() {
+    private lateinit var data: DataUser
+    companion object{
+        private val ARG_USERNAME = "username"
+        private val TAG = FollowersFragment::class.java.simpleName
+
+        fun newInstance(username: String?): FollowersFragment {
+            val fragment = FollowersFragment()
+            val bundle = Bundle()
+            bundle.putString(ARG_USERNAME, username)
+            fragment.arguments = bundle
+            return fragment
+        }
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        return inflater.inflate(R.layout.fragment_followers, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val username = arguments?.getString(ARG_USERNAME)
+        setData(username)
+
+        super.onViewCreated(view, savedInstanceState)
+    }
+
+    private fun setData(name: String?){
+        val listItems = ArrayList<Data>()
+        val client = AsyncHttpClient()
+        val url = "https://api.github.com/users/$name/followers"
+        client.addHeader("Authorization","token 7c9c872526439f91c0e8ab022601d26fbc8c2d9d")
+        client.addHeader("User-Agent","request")
+        client.get(url, object : AsyncHttpResponseHandler(){
+            override fun onSuccess(statusCode: Int, headers: Array<Header>, responseBody: ByteArray) {
+                val result = String(responseBody)
+                Log.d(TAG, result)
+                try {
+                    val items = JSONArray(result)
+                    for (i in 0 until items.length()){
+                        val item = items.getJSONObject(i)
+                        val name = item.getString("login")
+                        val photo = item.getString("avatar_url")
+                        val id = item.getInt("id")
+                        val user = Data()
+                        user.nama = name
+                        user.photo = photo
+                        user.id = id.toString()
+                        listItems.add(user)
+                    }
+                    data.setData(listItems)
+                }catch (e: Exception){
+                    e.printStackTrace()
+                }
+            }
+            override fun onFailure(statusCode: Int, headers: Array<Header>, responseBody: ByteArray, error: Throwable) {
+                Log.d("onFailure", error.message.toString())
+            }
+
+        })
+    }
+    private fun showRecyList() {
+        data = DataUser()
+        data.notifyDataSetChanged()
+
+        recyclerView.layoutManager = LinearLayoutManager(activity)
+        recyclerView.adapter = data
+    }
+}
